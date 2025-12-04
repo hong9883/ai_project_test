@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # OpenSearch for vector storage
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: rag-opensearch
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - DISABLE_SECURITY_PLUGIN=true
+      - plugins.security.disabled=true
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Ollama for local LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rag-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # PostgreSQL for Auth Service
+  postgres:
+    image: postgres:15-alpine
+    container_name: rag-postgres
+    environment:
+      POSTGRES_DB: rag_auth
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: rag_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for session management
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - rag-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  opensearch-data:
+  ollama-data:
+  postgres-data:
+  redis-data:
+
+networks:
+  rag-network:
+    driver: bridge
