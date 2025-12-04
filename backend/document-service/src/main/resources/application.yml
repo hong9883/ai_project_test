@@ -1,0 +1,44 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: document-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rag_document
+    username: rag_user
+    password: rag_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+opensearch:
+  host: localhost
+  port: 9200
+  index: rag-documents
+
+ollama:
+  url: http://localhost:11434
+  model: llama2
+  embedding-dimension: 4096
+
+storage:
+  upload-dir: ./uploads
+
+logging:
+  level:
+    com.rag.document: DEBUG
